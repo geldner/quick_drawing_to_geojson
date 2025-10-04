@@ -6,6 +6,7 @@ Draw polygons on a map and export as GeoJSON
 from flask import Flask, render_template, request, jsonify, send_file
 import json
 import os
+import sys
 from datetime import datetime
 import webbrowser
 import threading
@@ -47,23 +48,32 @@ def export_geojson():
     """Export polygons as GeoJSON file"""
     if not polygons:
         return jsonify({'error': 'No polygons to export'}), 400
-    
+
     feature_collection = {
         'type': 'FeatureCollection',
         'features': polygons
     }
-    
+
+    # Get the directory where the executable/script is located
+    if getattr(sys, 'frozen', False):
+        # Running as compiled executable
+        base_dir = os.path.dirname(sys.executable)
+    else:
+        # Running as script
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+
     # Create output directory if it doesn't exist
-    os.makedirs('output', exist_ok=True)
-    
+    output_dir = os.path.join(base_dir, 'output')
+    os.makedirs(output_dir, exist_ok=True)
+
     # Generate filename with timestamp
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    filename = f'output/polygons_{timestamp}.geojson'
-    
+    filename = os.path.join(output_dir, f'polygons_{timestamp}.geojson')
+
     # Save to file
     with open(filename, 'w') as f:
         json.dump(feature_collection, f, indent=2)
-    
+
     return send_file(filename, as_attachment=True)
 
 def open_browser():
