@@ -268,10 +268,11 @@ if __name__ == '__main__':
             <div class="instructions">
                 <h3>How to Use:</h3>
                 <ol>
-                    <li>Choose a drawing tool from the left toolbar:</li>
+                    <li>Click the polygon tool in the left toolbar</li>
+                    <li>Drawing modes:</li>
                     <ul>
-                        <li><strong>Polygon</strong> - Click to add vertices</li>
-                        <li><strong>Freehand Polygon</strong> - Click and drag to draw freely</li>
+                        <li><strong>Click mode</strong> - Click to add vertices, finish by clicking first point</li>
+                        <li><strong>Freehand mode</strong> - Hold SHIFT and drag to draw freely</li>
                     </ul>
                     <li>Draw as many polygons as you need</li>
                     <li>Click <strong>"Export GeoJSON"</strong> to download all polygons</li>
@@ -311,6 +312,7 @@ if __name__ == '__main__':
         // Add Geoman controls for drawing (includes freehand)
         map.pm.addControls({
             position: 'topleft',
+            drawPolygon: true,
             drawCircle: false,
             drawCircleMarker: false,
             drawPolyline: false,
@@ -319,6 +321,13 @@ if __name__ == '__main__':
             drawText: false,
             cutPolygon: false,
             rotateMode: false
+        });
+
+        // Enable freehand mode for polygons
+        map.pm.setGlobalOptions({
+            snapDistance: 20,
+            continueDrawing: false,
+            allowSelfIntersection: true
         });
 
         let polygonCount = 0;
