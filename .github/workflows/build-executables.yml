@@ -1,0 +1,134 @@
+name: Build Executables
+
+on:
+  push:
+    tags:
+      - 'v*'  # Triggers on version tags like v1.0, v1.1, etc.
+  workflow_dispatch:  # Allows manual triggering
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+        include:
+          - os: windows-latest
+            output_name: PolygonMapper.exe
+            asset_name: PolygonMapper-Windows.zip
+          - os: macos-latest
+            output_name: PolygonMapper
+            asset_name: PolygonMapper-macOS.zip
+          - os: ubuntu-latest
+            output_name: PolygonMapper
+            asset_name: PolygonMapper-Linux.tar.gz
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+
+    - name: Create templates directory
+      run: |
+        mkdir -p templates
+
+    - name: Run app once to generate HTML template
+      shell: bash
+      run: |
+        timeout 5 python polygon_mapper.py || true
+      continue-on-error: true
+
+    - name: Build executable (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        pyinstaller --onefile --windowed --name=PolygonMapper --add-data="templates;templates" --hidden-import=flask --hidden-import=werkzeug --collect-all=flask polygon_mapper.py
+
+    - name: Build executable (Unix)
+      if: matrix.os != 'windows-latest'
+      run: |
+        pyinstaller --onefile --windowed --name=PolygonMapper --add-data="templates:templates" --hidden-import=flask --hidden-import=werkzeug --collect-all=flask polygon_mapper.py
+
+    - name: Create HOW_TO_USE.txt (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        echo "POLYGON MAPPER - Quick Start" > dist/HOW_TO_USE.txt
+        echo "" >> dist/HOW_TO_USE.txt
+        echo "1. Double-click PolygonMapper.exe" >> dist/HOW_TO_USE.txt
+        echo "2. Your browser opens automatically" >> dist/HOW_TO_USE.txt
+        echo "3. Draw polygons on the map" >> dist/HOW_TO_USE.txt
+        echo "4. Click 'Export GeoJSON' to save" >> dist/HOW_TO_USE.txt
+        echo "" >> dist/HOW_TO_USE.txt
+        echo "Files save to an 'output' folder next to the app." >> dist/HOW_TO_USE.txt
+
+    - name: Create HOW_TO_USE.txt (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        cat > dist/HOW_TO_USE.txt << 'EOF'
+        POLYGON MAPPER - Quick Start
+
+        1. Right-click PolygonMapper → Open (first time only)
+        2. Click "Open" in the security dialog
+        3. Your browser opens automatically
+        4. Draw polygons on the map
+        5. Click "Export GeoJSON" to save
+
+        Files save to an "output" folder next to the app.
+        EOF
+
+    - name: Create HOW_TO_USE.txt (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        cat > dist/HOW_TO_USE.txt << 'EOF'
+        POLYGON MAPPER - Quick Start
+
+        1. Make executable: chmod +x PolygonMapper
+        2. Run: ./PolygonMapper
+        3. Your browser opens automatically
+        4. Draw polygons on the map
+        5. Click "Export GeoJSON" to save
+
+        Files save to an "output" folder next to the app.
+        EOF
+
+    - name: Package (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        cd dist
+        7z a PolygonMapper-Windows.zip PolygonMapper.exe HOW_TO_USE.txt
+
+    - name: Package (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        cd dist
+        zip -r PolygonMapper-macOS.zip PolygonMapper HOW_TO_USE.txt
+
+    - name: Package (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        cd dist
+        tar -czf PolygonMapper-Linux.tar.gz PolygonMapper HOW_TO_USE.txt
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ matrix.asset_name }}
+        path: dist/${{ matrix.asset_name }}
+
+    - name: Create Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: dist/${{ matrix.asset_name }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
