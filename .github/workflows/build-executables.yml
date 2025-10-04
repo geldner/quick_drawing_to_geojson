@@ -52,12 +52,12 @@ jobs:
     - name: Build executable (Windows)
       if: matrix.os == 'windows-latest'
       run: |
-        pyinstaller --onefile --windowed --name=PolygonMapper --add-data="templates;templates" --hidden-import=flask --hidden-import=werkzeug --collect-all=flask polygon_mapper.py
+        pyinstaller --onefile --name=PolygonMapper --add-data="templates;templates" --hidden-import=flask --hidden-import=werkzeug --collect-all=flask polygon_mapper.py
 
     - name: Build executable (Unix)
       if: matrix.os != 'windows-latest'
       run: |
-        pyinstaller --onefile --windowed --name=PolygonMapper --add-data="templates:templates" --hidden-import=flask --hidden-import=werkzeug --collect-all=flask polygon_mapper.py
+        pyinstaller --onefile --name=PolygonMapper --add-data="templates:templates" --hidden-import=flask --hidden-import=werkzeug --collect-all=flask polygon_mapper.py
 
     - name: Create HOW_TO_USE.txt (Windows)
       if: matrix.os == 'windows-latest'
@@ -65,9 +65,10 @@ jobs:
         echo "POLYGON MAPPER - Quick Start" > dist/HOW_TO_USE.txt
         echo "" >> dist/HOW_TO_USE.txt
         echo "1. Double-click PolygonMapper.exe" >> dist/HOW_TO_USE.txt
-        echo "2. Your browser opens automatically" >> dist/HOW_TO_USE.txt
+        echo "2. A console window opens and your browser opens automatically" >> dist/HOW_TO_USE.txt
         echo "3. Draw polygons on the map" >> dist/HOW_TO_USE.txt
         echo "4. Click 'Export GeoJSON' to save" >> dist/HOW_TO_USE.txt
+        echo "5. To quit: Close the console window" >> dist/HOW_TO_USE.txt
         echo "" >> dist/HOW_TO_USE.txt
         echo "Files save to an 'output' folder next to the app." >> dist/HOW_TO_USE.txt
 
@@ -79,9 +80,10 @@ jobs:
 
         1. Right-click PolygonMapper → Open (first time only)
         2. Click "Open" in the security dialog
-        3. Your browser opens automatically
+        3. A terminal window opens and your browser opens automatically
         4. Draw polygons on the map
         5. Click "Export GeoJSON" to save
+        6. To quit: Press Ctrl+C in the terminal window
 
         Files save to an "output" folder next to the app.
         EOF
@@ -97,6 +99,7 @@ jobs:
         3. Your browser opens automatically
         4. Draw polygons on the map
         5. Click "Export GeoJSON" to save
+        6. To quit: Press Ctrl+C in the terminal
 
         Files save to an "output" folder next to the app.
         EOF
