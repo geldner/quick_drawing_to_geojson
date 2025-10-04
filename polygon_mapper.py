@@ -95,6 +95,7 @@ if __name__ == '__main__':
     <title>Polygon Mapper</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+    <link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@latest/dist/leaflet-geoman.css" />
     <style>
         * {
             margin: 0;
@@ -267,11 +268,14 @@ if __name__ == '__main__':
             <div class="instructions">
                 <h3>How to Use:</h3>
                 <ol>
-                    <li>Click the <strong>polygon tool</strong> in the map's left toolbar</li>
-                    <li>Click on the map to create vertices for your polygon</li>
-                    <li>Double-click or click the first point again to complete the polygon</li>
+                    <li>Choose a drawing tool from the left toolbar:</li>
+                    <ul>
+                        <li><strong>Polygon</strong> - Click to add vertices</li>
+                        <li><strong>Freehand Polygon</strong> - Click and drag to draw freely</li>
+                    </ul>
                     <li>Draw as many polygons as you need</li>
                     <li>Click <strong>"Export GeoJSON"</strong> to download all polygons</li>
+                    <li>Use the Edit or Delete tools to modify shapes</li>
                 </ol>
             </div>
 
@@ -293,6 +297,7 @@ if __name__ == '__main__':
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+    <script src="https://unpkg.com/@geoman-io/leaflet-geoman-free@latest/dist/leaflet-geoman.min.js"></script>
     <script>
         // Initialize map
         const map = L.map('map').setView([39.8283, -98.5795], 4);
@@ -303,38 +308,24 @@ if __name__ == '__main__':
             maxZoom: 19
         }).addTo(map);
 
-        // Create feature group for drawn items
-        const drawnItems = new L.FeatureGroup();
-        map.addLayer(drawnItems);
-
-        // Initialize draw control
-        const drawControl = new L.Control.Draw({
-            draw: {
-                polygon: {
-                    shapeOptions: {
-                        color: '#3388ff',
-                        weight: 3
-                    }
-                },
-                polyline: false,
-                rectangle: false,
-                circle: false,
-                marker: false,
-                circlemarker: false
-            },
-            edit: {
-                featureGroup: drawnItems,
-                remove: true
-            }
+        // Add Geoman controls for drawing (includes freehand)
+        map.pm.addControls({
+            position: 'topleft',
+            drawCircle: false,
+            drawCircleMarker: false,
+            drawPolyline: false,
+            drawRectangle: false,
+            drawMarker: false,
+            drawText: false,
+            cutPolygon: false,
+            rotateMode: false
         });
-        map.addControl(drawControl);
 
         let polygonCount = 0;
 
-        // Handle polygon creation
-        map.on(L.Draw.Event.CREATED, function(event) {
-            const layer = event.layer;
-            drawnItems.addLayer(layer);
+        // Handle polygon creation (both click-to-draw and freehand)
+        map.on('pm:create', function(e) {
+            const layer = e.layer;
 
             // Convert to GeoJSON
             const geojson = layer.toGeoJSON();
@@ -356,13 +347,10 @@ if __name__ == '__main__':
         });
 
         // Handle polygon deletion
-        map.on(L.Draw.Event.DELETED, function(event) {
-            const layers = event.layers;
-            layers.eachLayer(function(layer) {
-                polygonCount--;
-            });
+        map.on('pm:remove', function(e) {
+            polygonCount--;
             updateCounter();
-            showStatus('Polygon(s) deleted', 'info');
+            showStatus('Polygon deleted', 'info');
         });
 
         function updateCounter() {
@@ -416,7 +404,12 @@ if __name__ == '__main__':
             }
 
             if (confirm('Are you sure you want to clear all ' + polygonCount + ' polygon(s)?')) {
-                drawnItems.clearLayers();
+                // Remove all layers from the map
+                map.eachLayer(function(layer) {
+                    if (layer instanceof L.Polygon || layer instanceof L.Polyline) {
+                        map.removeLayer(layer);
+                    }
+                });
 
                 fetch('/api/polygons', {
                     method: 'DELETE'
