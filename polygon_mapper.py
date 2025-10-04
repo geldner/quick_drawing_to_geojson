@@ -101,35 +101,35 @@ if __name__ == '__main__':
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: #f5f5f5;
         }
-        
+
         .header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             padding: 20px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
-        
+
         .header h1 {
             font-size: 28px;
             margin-bottom: 10px;
         }
-        
+
         .header p {
             opacity: 0.9;
             font-size: 14px;
         }
-        
+
         .container {
             max-width: 1400px;
             margin: 0 auto;
             padding: 20px;
         }
-        
+
         .controls {
             background: white;
             padding: 20px;
@@ -137,7 +137,7 @@ if __name__ == '__main__':
             margin-bottom: 20px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.05);
         }
-        
+
         .instructions {
             background: #e8f4f8;
             border-left: 4px solid #3388ff;
@@ -145,26 +145,26 @@ if __name__ == '__main__':
             border-radius: 5px;
             margin-bottom: 15px;
         }
-        
+
         .instructions h3 {
             color: #2c3e50;
             margin-bottom: 10px;
             font-size: 16px;
         }
-        
+
         .instructions ol {
             margin-left: 20px;
             color: #555;
             font-size: 14px;
             line-height: 1.8;
         }
-        
+
         .button-group {
             display: flex;
             gap: 10px;
             flex-wrap: wrap;
         }
-        
+
         .btn {
             padding: 12px 24px;
             border: none;
@@ -177,44 +177,44 @@ if __name__ == '__main__':
             align-items: center;
             gap: 8px;
         }
-        
+
         .btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
-        
+
         .btn-primary {
             background: #3388ff;
             color: white;
         }
-        
+
         .btn-success {
             background: #28a745;
             color: white;
         }
-        
+
         .btn-warning {
             background: #ffc107;
             color: #333;
         }
-        
+
         .btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
         }
-        
+
         .btn:disabled:hover {
             transform: none;
             box-shadow: none;
         }
-        
+
         #map {
             height: 600px;
             border-radius: 10px;
             box-shadow: 0 2px 20px rgba(0,0,0,0.1);
             border: 2px solid #ddd;
         }
-        
+
         .status {
             margin-top: 15px;
             padding: 12px;
@@ -222,28 +222,28 @@ if __name__ == '__main__':
             font-size: 14px;
             display: none;
         }
-        
+
         .status.success {
             background: #d4edda;
             color: #155724;
             border: 1px solid #c3e6cb;
             display: block;
         }
-        
+
         .status.error {
             background: #f8d7da;
             color: #721c24;
             border: 1px solid #f5c6cb;
             display: block;
         }
-        
+
         .status.info {
             background: #d1ecf1;
             color: #0c5460;
             border: 1px solid #bee5eb;
             display: block;
         }
-        
+
         .counter {
             background: #667eea;
             color: white;
@@ -257,37 +257,37 @@ if __name__ == '__main__':
 <body>
     <div class="header">
         <div class="container">
-            <h1>📍 Polygon Mapper</h1>
+            <h1>Polygon Mapper</h1>
             <p>Draw polygons on the map and export them as GeoJSON files</p>
         </div>
     </div>
-    
+
     <div class="container">
         <div class="controls">
             <div class="instructions">
-                <h3>📝 How to Use:</h3>
+                <h3>How to Use:</h3>
                 <ol>
-                    <li>Click the <strong>polygon tool</strong> (⬟) in the map's left toolbar</li>
+                    <li>Click the <strong>polygon tool</strong> in the map's left toolbar</li>
                     <li>Click on the map to create vertices for your polygon</li>
                     <li>Double-click or click the first point again to complete the polygon</li>
                     <li>Draw as many polygons as you need</li>
                     <li>Click <strong>"Export GeoJSON"</strong> to download all polygons</li>
                 </ol>
             </div>
-            
+
             <div class="button-group">
                 <button class="btn btn-success" onclick="exportGeoJSON()" id="exportBtn">
-                    📥 Export GeoJSON
+                    Export GeoJSON
                 </button>
                 <button class="btn btn-warning" onclick="clearAll()">
-                    🗑️ Clear All
+                    Clear All
                 </button>
                 <span class="counter" id="counter">Polygons: 0</span>
             </div>
-            
+
             <div id="status" class="status"></div>
         </div>
-        
+
         <div id="map"></div>
     </div>
 
@@ -296,17 +296,17 @@ if __name__ == '__main__':
     <script>
         // Initialize map
         const map = L.map('map').setView([39.8283, -98.5795], 4);
-        
+
         // Add OpenStreetMap tiles
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors',
             maxZoom: 19
         }).addTo(map);
-        
+
         // Create feature group for drawn items
         const drawnItems = new L.FeatureGroup();
         map.addLayer(drawnItems);
-        
+
         // Initialize draw control
         const drawControl = new L.Control.Draw({
             draw: {
@@ -328,17 +328,17 @@ if __name__ == '__main__':
             }
         });
         map.addControl(drawControl);
-        
+
         let polygonCount = 0;
-        
+
         // Handle polygon creation
         map.on(L.Draw.Event.CREATED, function(event) {
             const layer = event.layer;
             drawnItems.addLayer(layer);
-            
+
             // Convert to GeoJSON
             const geojson = layer.toGeoJSON();
-            
+
             // Send to server
             fetch('/api/polygons', {
                 method: 'POST',
@@ -351,10 +351,10 @@ if __name__ == '__main__':
             .then(data => {
                 polygonCount = data.count;
                 updateCounter();
-                showStatus(`✓ Polygon ${polygonCount} added successfully!`, 'success');
+                showStatus('Polygon ' + polygonCount + ' added successfully!', 'success');
             });
         });
-        
+
         // Handle polygon deletion
         map.on(L.Draw.Event.DELETED, function(event) {
             const layers = event.layers;
@@ -364,80 +364,82 @@ if __name__ == '__main__':
             updateCounter();
             showStatus('Polygon(s) deleted', 'info');
         });
-        
+
         function updateCounter() {
-            document.getElementById('counter').textContent = `Polygons: ${polygonCount}`;
+            document.getElementById('counter').textContent = 'Polygons: ' + polygonCount;
             document.getElementById('exportBtn').disabled = polygonCount === 0;
         }
-        
+
         function showStatus(message, type) {
             const status = document.getElementById('status');
             status.textContent = message;
-            status.className = `status ${type}`;
-            
-            setTimeout(() => {
+            status.className = 'status ' + type;
+
+            setTimeout(function() {
                 status.className = 'status';
             }, 5000);
         }
-        
+
         function exportGeoJSON() {
             if (polygonCount === 0) {
-                showStatus('⚠ No polygons to export. Draw some polygons first!', 'error');
+                showStatus('No polygons to export. Draw some polygons first!', 'error');
                 return;
             }
-            
+
             fetch('/api/export')
-                .then(response => {
+                .then(function(response) {
                     if (!response.ok) {
                         throw new Error('Export failed');
                     }
                     return response.blob();
                 })
-                .then(blob => {
+                .then(function(blob) {
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
-                    a.download = `polygons_${new Date().getTime()}.geojson`;
+                    a.download = 'polygons_' + new Date().getTime() + '.geojson';
                     document.body.appendChild(a);
                     a.click();
                     window.URL.revokeObjectURL(url);
                     document.body.removeChild(a);
-                    showStatus(`✓ Exported ${polygonCount} polygon(s) successfully!`, 'success');
+                    showStatus('Exported ' + polygonCount + ' polygon(s) successfully!', 'success');
                 })
-                .catch(error => {
-                    showStatus('⚠ Export failed. Please try again.', 'error');
+                .catch(function(error) {
+                    showStatus('Export failed. Please try again.', 'error');
                 });
         }
-        
+
         function clearAll() {
             if (polygonCount === 0) {
                 showStatus('No polygons to clear', 'info');
                 return;
             }
-            
-            if (confirm(`Are you sure you want to clear all ${polygonCount} polygon(s)?`)) {
+
+            if (confirm('Are you sure you want to clear all ' + polygonCount + ' polygon(s)?')) {
                 drawnItems.clearLayers();
-                
+
                 fetch('/api/polygons', {
                     method: 'DELETE'
                 })
-                .then(response => response.json())
-                .then(data => {
+                .then(function(response) {
+                    return response.json();
+                })
+                .then(function(data) {
                     polygonCount = 0;
                     updateCounter();
-                    showStatus('✓ All polygons cleared', 'success');
+                    showStatus('All polygons cleared', 'success');
                 });
             }
         }
-        
+
         // Initialize counter
         updateCounter();
     </script>
 </body>
 </html>'''
-    
+
     # Write HTML template
-    with open('templates/index.html', 'w') as f:
+    with open('templates/index.html', 'w', encoding='utf-8') as f:
         f.write(html_content)
     
     # Start browser in a separate thread
