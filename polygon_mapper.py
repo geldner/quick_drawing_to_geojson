@@ -95,7 +95,7 @@ if __name__ == '__main__':
     <title>Polygon Mapper</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
-    <link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@latest/dist/leaflet-geoman.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-freedraw@2.15.0/dist/leaflet-freedraw.css" />
     <style>
         * {
             margin: 0;
@@ -268,19 +268,17 @@ if __name__ == '__main__':
             <div class="instructions">
                 <h3>How to Use:</h3>
                 <ol>
-                    <li>Click the polygon tool in the left toolbar</li>
-                    <li>Drawing modes:</li>
-                    <ul>
-                        <li><strong>Click mode</strong> - Click to add vertices, finish by clicking first point</li>
-                        <li><strong>Freehand mode</strong> - Hold SHIFT and drag to draw freely</li>
-                    </ul>
+                    <li><strong>Click-to-draw mode:</strong> Use the polygon tool in left toolbar, click to add vertices</li>
+                    <li><strong>Freehand mode:</strong> Click "Enable Freehand" below, then click and drag to draw</li>
                     <li>Draw as many polygons as you need</li>
                     <li>Click <strong>"Export GeoJSON"</strong> to download all polygons</li>
-                    <li>Use the Edit or Delete tools to modify shapes</li>
                 </ol>
             </div>
 
             <div class="button-group">
+                <button class="btn btn-primary" onclick="toggleFreehand()" id="freehandBtn">
+                    Enable Freehand
+                </button>
                 <button class="btn btn-success" onclick="exportGeoJSON()" id="exportBtn">
                     Export GeoJSON
                 </button>
@@ -298,7 +296,7 @@ if __name__ == '__main__':
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
-    <script src="https://unpkg.com/@geoman-io/leaflet-geoman-free@latest/dist/leaflet-geoman.min.js"></script>
+    <script src="https://unpkg.com/leaflet-freedraw@2.15.0/dist/leaflet-freedraw.web.js"></script>
     <script>
         // Initialize map
         const map = L.map('map').setView([39.8283, -98.5795], 4);
@@ -309,37 +307,49 @@ if __name__ == '__main__':
             maxZoom: 19
         }).addTo(map);
 
-        // Add Geoman controls for drawing (includes freehand)
-        map.pm.addControls({
-            position: 'topleft',
-            drawPolygon: true,
-            drawCircle: false,
-            drawCircleMarker: false,
-            drawPolyline: false,
-            drawRectangle: false,
-            drawMarker: false,
-            drawText: false,
-            cutPolygon: false,
-            rotateMode: false
-        });
+        // Add regular Leaflet.Draw controls for click-to-draw polygons
+        const drawnItems = new L.FeatureGroup();
+        map.addLayer(drawnItems);
 
-        // Enable freehand mode for polygons
-        map.pm.setGlobalOptions({
-            snapDistance: 20,
-            continueDrawing: false,
-            allowSelfIntersection: true
+        const drawControl = new L.Control.Draw({
+            draw: {
+                polygon: {
+                    shapeOptions: {
+                        color: '#3388ff',
+                        weight: 3
+                    }
+                },
+                polyline: false,
+                rectangle: false,
+                circle: false,
+                marker: false,
+                circlemarker: false
+            },
+            edit: {
+                featureGroup: drawnItems,
+                remove: true
+            }
         });
+        map.addControl(drawControl);
+
+        // Add FreeDraw for freehand drawing
+        const freeDraw = new FreeDraw({
+            mode: FreeDraw.NONE,
+            smoothFactor: 0.5,
+            strokeWidth: 3
+        });
+        map.addLayer(freeDraw);
 
         let polygonCount = 0;
+        let freehandMode = false;
 
-        // Handle polygon creation (both click-to-draw and freehand)
-        map.on('pm:create', function(e) {
-            const layer = e.layer;
+        // Handle regular polygon creation from Leaflet.Draw
+        map.on(L.Draw.Event.CREATED, function(event) {
+            const layer = event.layer;
+            drawnItems.addLayer(layer);
 
-            // Convert to GeoJSON
             const geojson = layer.toGeoJSON();
 
-            // Send to server
             fetch('/api/polygons', {
                 method: 'POST',
                 headers: {
@@ -355,12 +365,65 @@ if __name__ == '__main__':
             });
         });
 
-        // Handle polygon deletion
-        map.on('pm:remove', function(e) {
-            polygonCount--;
-            updateCounter();
-            showStatus('Polygon deleted', 'info');
+        // Handle FreeDraw polygon creation
+        freeDraw.on('markers', function(event) {
+            const polygons = freeDraw.all();
+
+            if (polygons.length > 0) {
+                const latestPolygon = polygons[polygons.length - 1];
+                const geojson = {
+                    type: 'Feature',
+                    properties: {},
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [latestPolygon.map(point => [point.lng, point.lat])]
+                    }
+                };
+
+                fetch('/api/polygons', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(geojson)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    polygonCount = data.count;
+                    updateCounter();
+                    showStatus('Freehand polygon ' + polygonCount + ' added successfully!', 'success');
+                });
+            }
         });
+
+        // Handle polygon deletion from Leaflet.Draw
+        map.on(L.Draw.Event.DELETED, function(event) {
+            const layers = event.layers;
+            layers.eachLayer(function(layer) {
+                polygonCount--;
+            });
+            updateCounter();
+            showStatus('Polygon(s) deleted', 'info');
+        });
+
+        function toggleFreehand() {
+            freehandMode = !freehandMode;
+            const btn = document.getElementById('freehandBtn');
+
+            if (freehandMode) {
+                freeDraw.mode(FreeDraw.CREATE);
+                btn.textContent = 'Disable Freehand';
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-warning');
+                showStatus('Freehand mode enabled - click and drag to draw', 'info');
+            } else {
+                freeDraw.mode(FreeDraw.NONE);
+                btn.textContent = 'Enable Freehand';
+                btn.classList.remove('btn-warning');
+                btn.classList.add('btn-primary');
+                showStatus('Freehand mode disabled', 'info');
+            }
+        }
 
         function updateCounter() {
             document.getElementById('counter').textContent = 'Polygons: ' + polygonCount;
@@ -413,12 +476,11 @@ if __name__ == '__main__':
             }
 
             if (confirm('Are you sure you want to clear all ' + polygonCount + ' polygon(s)?')) {
-                // Remove all layers from the map
-                map.eachLayer(function(layer) {
-                    if (layer instanceof L.Polygon || layer instanceof L.Polyline) {
-                        map.removeLayer(layer);
-                    }
-                });
+                // Clear Leaflet.Draw layers
+                drawnItems.clearLayers();
+
+                // Clear FreeDraw layers
+                freeDraw.clear();
 
                 fetch('/api/polygons', {
                     method: 'DELETE'
